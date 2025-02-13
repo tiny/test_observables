@@ -186,6 +186,8 @@ class Purchase
 
 typedef uint32_t  HoldingID ;
 
+HoldingID  ghid = 0 ;
+
 class Holding
 {
   public  :
@@ -198,10 +200,13 @@ class Holding
     Price          _cost ;    // original cost of holding
     Price          _net ;     // net on stock to date
 
-    virtual void   onPriceChange()
+    virtual short  onPriceChange( const go::ArgList *args )
                    {
-                     _current = _issue->_lastTrade._price * (double)_price._qty ;
+ghid = _id ;
+                      _current = args->asDouble(0) * (double)_price._qty ;
+//                     _current = _issue->_lastTrade._price * (double)_price._qty ;
                      _net = _current - _cost ;
+ghid = 0 ;
                    }
 
                    Holding( HoldingID id, Issue *i, const Purchase &price )
@@ -210,7 +215,7 @@ class Holding
                      _cost = _price._cost ;
                      _current = _issue->_lastTrade._price * (double)_price._qty ;
                      _net = _current - _cost ;
-                     i->_lastTrade._price.valueCB().install( new go::PokeObserver<Holding>( this, &Holding::onPriceChange )) ;
+                     i->_lastTrade._price.valueCB().install( new go::Observer<Holding>( this, &Holding::onPriceChange )) ;
                    }
 } ; // class Holding
 
@@ -231,8 +236,12 @@ class Portfolio
 
     virtual short  onHoldingChange( const go::ArgList *args )
                    {
+double c = (double)_current ;
                      _current += (args->asDouble(1) - args->asDouble(0)) ; // add difference
                      _net = _current - _cost ;
+if (ghid == 210) {
+//  printf( "  hid.%d  new(%6.3f)  old(%6.3f)  total: %6.3f  ->  %6.3f\n", ghid, args->asDouble(0), args->asDouble(1), c, (double)_current ) ;
+}
                      return 0 ;
                    }
                    Portfolio( const PortfolioID &id )
@@ -414,9 +423,11 @@ void portfolio_test()
   printf( "  portfolios will then be updated.\n\n" ) ;
 
   // create portfolios
+  HoldingID    hid = 200 ;
+  PortfolioID  pid = 100 ;
   for (j = 0; j < nPortfolios; j++)
   {
-    p = new Portfolio( PortfolioID(100+j) ) ;
+    p = new Portfolio( pid++ ) ;
     for (k = 0; k < nHoldings; k++)
     {
       tmp = iMgr.get( gbl_issuenames[ rand_between(0, nIssues) ] ) ;
@@ -425,7 +436,7 @@ void portfolio_test()
         pershare = tmp->_close + (double)rand_between( -2, 3 ) ;
         if (pershare <= 1.0) pershare = 1.0;
         lot = rand_between( 1, 5 ) * 100 ;
-        h = new Holding( 200+j*nHoldings+k, tmp, Purchase( Price(pershare), Price(5.00),LotSize(lot), go::PointInTime() ) ) ;
+        h = new Holding( hid++, tmp, Purchase( Price(pershare), Price(5.00), LotSize(lot), go::PointInTime() ) ) ;
         p->holding( h ) ;
       }
     }

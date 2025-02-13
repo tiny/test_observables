@@ -98,6 +98,7 @@ class Issue
     Offer               _best_bid ;
     Offer               _day_hi ;
     Offer               _day_lo ;
+    Price               _close;
     Price               _open ;
     Price               _prevClose ;
     go::GOLong          _nTrades ;
@@ -120,12 +121,21 @@ class IssueMgr
 
   public  :
                    IssueMgr() {}
-    Issue         *find( const go::GOString &sym ) 
+    Issue         *find(const go::GOString& sym)
                    {
-                     IssueMap_iter  iter = _issues.find( sym ) ;
-                     return (iter == _issues.end()) ? NULL : (*iter).second ; 
+                     IssueMap_iter  iter = _issues.find(sym);
+                     return (iter == _issues.end()) ? NULL : (*iter).second;
                    }
-    short          issue( const go::GOString &sym ) 
+    Issue         *get(const go::GOString& sym)
+                   {
+                     IssueMap_iter  iter = _issues.find(sym);
+                     if (iter == _issues.end()) {
+                       auto rc = _issues.insert(IssueMap_pair(sym, new Issue(sym)));
+                       iter = rc.first;
+                     }
+                     return (iter == _issues.end()) ? NULL : (*iter).second;
+                   }
+    short          issue( const go::GOString &sym )
                    {
                      IssueMap_iter  iter = _issues.find( sym ) ;
                      if (iter != _issues.end())
@@ -286,7 +296,7 @@ class OrderBook
 
 void show( Issue *s )
 {
-  printf( "%6.6s  %5.3lf  %5.3lf  %5.3lf  %8ld   %8ld  %4ld\n", 
+  printf( "%6.6s  %7.3lf  %7.3lf  %7.3lf  %8ld   %8ld  %4ld\n", 
           s->_symbol.c_str(), 
           (double)s->_lastTrade._price, 
           (double)s->_day_hi._price, 
@@ -302,7 +312,7 @@ void show( IssueMgr &iMgr )
   IssueMap_iter  iter ;
 
   printf( "\n" ) ;
-  printf( "symbol  last    hi      lo         nTrades  volume  nInvestors\n" ) ;
+  printf( "symbol     last       hi       lo   nTrades     volume  nInvestors\n" ) ;
   printf( "-------------------------------------------------------------\n" ) ;
   for (iter = iMgr.issues().begin(); iter != iMgr.issues().end(); iter++)
   {
@@ -368,13 +378,15 @@ void portfolio_test()
   j = 0 ;
   while (!gbl_issuenames[j].isEmpty())
   {
-    iMgr.issue( gbl_issuenames[j] ) ;
-    i = iMgr.find( gbl_issuenames[j] ) ;
+//    iMgr.issue( gbl_issuenames[j] ) ;
+    i = iMgr.get( gbl_issuenames[j] ) ;
     if (i != NULL)
     {
-      i->_lastTrade._price = rand_between( 20, 26 ) ;
-      i->_day_lo._price = i->_lastTrade._price ;
-      i->_day_hi._price = i->_lastTrade._price ;
+      i->_close = rand_between(10, 40);
+      i->_lastTrade._price = i->_close;
+      i->_lastTrade._qty   = rand_between(1, 5) * 100;
+//      i->_day_lo._price = i->_lastTrade._price ;
+//      i->_day_hi._price = i->_lastTrade._price ;
     }
     j++ ;
     nIssues++ ;
@@ -394,12 +406,13 @@ void portfolio_test()
     p = new Portfolio( PortfolioID(100+j) ) ;
     for (k = 0; k < nHoldings; k++)
     {
-      tmp = iMgr.find( gbl_issuenames[ rand_between(0, nIssues) ] ) ;
+      tmp = iMgr.get( gbl_issuenames[ rand_between(0, nIssues) ] ) ;
       if (tmp != NULL)
       {
-        pershare = 20.00 + rand_between( -2, 2 ) ;
+        pershare = tmp->_close + (double)rand_between( -2, 3 ) ;
+        if (pershare <= 1.0) pershare = 1.0;
         lot = rand_between( 1, 5 ) * 100 ;
-        h = new Holding( 200+j*nHoldings+k, tmp, Purchase( Price(pershare), Price(10.00),LotSize(lot), go::PointInTime() ) ) ;
+        h = new Holding( 200+j*nHoldings+k, tmp, Purchase( Price(pershare), Price(5.00),LotSize(lot), go::PointInTime() ) ) ;
         p->holding( h ) ;
       }
     }
@@ -421,11 +434,16 @@ void portfolio_test()
   k = 0 ;
   for (j = 0; j < count; j++)
   {
-    a = o._price - 2.0 ;
-    b = a + 5 ;
-    t = max( 10, min( 50, rand_between( a, b ))) ;
-    o._price = t ;
-    iMgr.trade( gbl_issuenames[ rand_between(0, nIssues) ], o ) ;
+    tmp = iMgr.get( gbl_issuenames[rand_between(0, nIssues)] ) ;
+    o._price = tmp->_lastTrade._price + (double)rand_between(-2, 3);
+    if (o._price <= 1.0) o._price = 1.0;
+    o._qty = rand_between(1, 5) * 100;
+
+//    a = o._price - 2.0 ;
+//    b = a + 5 ;
+//    t = max( 10, min( 50, rand_between( a, b ))) ;
+//    o._price = t ;
+    iMgr.trade( tmp->_symbol, o ) ;
   }
 
   timer.stop() ;

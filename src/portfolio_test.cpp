@@ -207,6 +207,7 @@ ghid = _id ;
 //                     _current = _issue->_lastTrade._price * (double)_price._qty ;
                      _net = _current - _cost ;
 ghid = 0 ;
+return 0;
                    }
 
                    Holding( HoldingID id, Issue *i, const Purchase &price )
@@ -240,7 +241,7 @@ double c = (double)_current ;
                      _current += (args->asDouble(1) - args->asDouble(0)) ; // add difference
                      _net = _current - _cost ;
 if (ghid == 210) {
-//  printf( "  hid.%d  new(%6.3f)  old(%6.3f)  total: %6.3f  ->  %6.3f\n", ghid, args->asDouble(0), args->asDouble(1), c, (double)_current ) ;
+  printf( "  hid.%d  new(%6.3f)  old(%6.3f)  total: %6.3f  ->  %6.3f\n", ghid, args->asDouble(0), args->asDouble(1), c, (double)_current ) ;
 }
                      return 0 ;
                    }

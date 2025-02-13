@@ -207,8 +207,9 @@ class Holding
                    Holding( HoldingID id, Issue *i, const Purchase &price )
                    : _id( id ), _issue(i), _price(price)
                    {
-                     _cost = ((double)_price._qty) * _price._price + _price._cost ;
+                     _cost = _price._cost ;
                      _current = _issue->_lastTrade._price * (double)_price._qty ;
+                     _net = _current - _cost ;
                      i->_lastTrade._price.valueCB().install( new go::PokeObserver<Holding>( this, &Holding::onPriceChange )) ;
                    }
 } ; // class Holding
@@ -223,12 +224,15 @@ class Portfolio
 {
   public  :
     PortfolioID    _id ;
-    Price          _current ; // current value
+    Price          _current ; // current value of the portfolio
+    Price          _cost ;    // total cost for all holdings
+    Price          _net ;     // total net value of the portfolio
     HoldingMap     _holdings ;
 
     virtual short  onHoldingChange( const go::ArgList *args )
                    {
                      _current += (args->asDouble(1) - args->asDouble(0)) ; // add difference
+                     _net = _current - _cost ;
                      return 0 ;
                    }
                    Portfolio( const PortfolioID &id )
@@ -240,6 +244,7 @@ class Portfolio
                      _holdings.insert( HoldingMap_pair( h->_id, h )) ;
                      h->_current.valueCB().install( new go::Observer<Portfolio>( this, &Portfolio::onHoldingChange ) ) ;
                      _current += h->_current ;
+                     _cost += h->_cost ;
                      return 0 ;
                    }
 } ; // class Portfolio
@@ -258,6 +263,10 @@ class PortfolioMgr
                      _portfolios.insert( PortfolioMap_pair( p->_id, p )) ;
                      return 0 ;
                    }
+    Portfolio     *get( PortfolioID id ) {
+                      PortfolioMap_iter  iter = _portfolios.find( id ) ;
+                      return (iter == _portfolios.end()) ? NULL : (*iter).second ;
+                   } 
 } ; // class PortfolioMgr
 
 typedef  uint32_t  OrderEntryID ;
@@ -326,10 +335,12 @@ void show( Portfolio *p )
   HoldingMap_iter  iter ;
   for (iter = p->_holdings.begin(); iter != p->_holdings.end(); iter++)
   {
-    printf( "  %ld  %6.6s  %9.3lf  %9.3lf\n", 
+    printf( "  %ld  %6.6s  %6d  %9.3lf  %9.3lf  %9.3lf\n", 
             (long)  (*iter).second->_id, 
                     (*iter).second->_issue->_symbol.c_str(),
+                    (*iter).second->_price._qty,
             (double)(*iter).second->_current,
+            (double)(*iter).second->_cost,
             (double)(*iter).second->_net
             ) ;
   }
@@ -340,11 +351,16 @@ void show( PortfolioMgr &pMgr )
   PortfolioMap_iter  iter ;
   printf( " id  current\n" ) ;
   printf( "------------\n" ) ;
-  for (iter = pMgr._portfolios.begin(); iter != pMgr._portfolios.end(); iter++)
+//  for (iter = pMgr._portfolios.begin(); iter != pMgr._portfolios.end(); iter++)
+  for (int id = 101; id < 103; id++)
   {
-    printf( "%d  %8.3lf\n", (*iter).second->_id, (double)(*iter).second->_current ) ;
-//    show( (*iter).second ) ;
-  }
+    Portfolio *p = pMgr.get( id ) ;
+    if (p != NULL)
+    {
+      printf( "%ld  %8.3lf\n", (long)p->_id, (double)p->_current ) ;
+      show( p ) ;
+    }
+  } 
 } // :: show
 
 go::GOString gbl_issuenames[] =
@@ -378,15 +394,12 @@ void portfolio_test()
   j = 0 ;
   while (!gbl_issuenames[j].isEmpty())
   {
-//    iMgr.issue( gbl_issuenames[j] ) ;
     i = iMgr.get( gbl_issuenames[j] ) ;
     if (i != NULL)
     {
       i->_close = rand_between(10, 40);
       i->_lastTrade._price = i->_close;
       i->_lastTrade._qty   = rand_between(1, 5) * 100;
-//      i->_day_lo._price = i->_lastTrade._price ;
-//      i->_day_hi._price = i->_lastTrade._price ;
     }
     j++ ;
     nIssues++ ;
@@ -419,6 +432,8 @@ void portfolio_test()
     pMgr.portfolio( p ) ;
   }
 
+  show( pMgr ) ;
+
   go::StopWatch    timer ;
   go::PointInTime  ts ;
   Offer        o ;
@@ -434,30 +449,28 @@ void portfolio_test()
   k = 0 ;
   for (j = 0; j < count; j++)
   {
+    // creating a fake trade using 3 rands definitely adds time to the per-trade time
     tmp = iMgr.get( gbl_issuenames[rand_between(0, nIssues)] ) ;
     o._price = tmp->_lastTrade._price + (double)rand_between(-2, 3);
-    if (o._price <= 1.0) o._price = 1.0;
+    if (o._price <= 1.0) o._price = 1.0; // don't let it walk below 1.00
     o._qty = rand_between(1, 5) * 100;
 
-//    a = o._price - 2.0 ;
-//    b = a + 5 ;
-//    t = max( 10, min( 50, rand_between( a, b ))) ;
-//    o._price = t ;
     iMgr.trade( tmp->_symbol, o ) ;
   }
 
   timer.stop() ;
   int64_t  ops_tm = timer.diff_usec() ;
 
+  printf( "\n" ) ;
   printf( "number of portfolios:  %ld\n", pMgr._portfolios.size() ) ;
   printf( "number of holdings per portfolio:  %ld\n", nHoldings ) ;
   printf( "number of trades pushed: %ld\n", count ) ;
-  printf( "number of invokes:  %ld\n", (go::Callback::_nInvokes - invokeCount) ) ;
+  printf( "number of invokes:  %d\n", (go::Callback::_nInvokes - invokeCount) ) ;
   printf( "total operation time:  %ld useconds\n", ops_tm ) ;
   printf( "average time per invoke:  %5.3lf useconds\n", (double)ops_tm/(double)(go::Callback::_nInvokes - invokeCount) ) ;
   printf( "average invokes per trade:  %5.3lf invokes\n\n", (double)(go::Callback::_nInvokes - invokeCount)/(double)(count) ) ;
   show( iMgr ) ;
-//  show( pMgr ) ;
+  show( pMgr ) ;
 } // :: portfolio_test
 
 

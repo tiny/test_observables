@@ -16,6 +16,11 @@
 
 using namespace std ; 
 
+#ifdef LINUX
+#  define max(a,b)    std::max(a,b)
+#  define min(a,b)    std::min(a,b)
+#endif
+
 typedef go::GOString   Currency ;
 typedef uint32_t       LotSize ;
 typedef go::GOLong     Volume ;
@@ -34,13 +39,13 @@ class Price : public go::GODouble
                    Price( const Price &p ) { *this = p ; }
     Price         &operator=( const Price &p )
                    {
-                     go::GODouble::operator=( (double &)p ) ;
+                     go::GODouble::operator=( (double)p ) ;
                      _currency = p._currency ;
                      return *this ;
                    }
     Price         &operator=( const go::GODouble &d )
                    {
-                     go::GODouble::operator=( (double &)d ) ;
+                     go::GODouble::operator=((double)d ) ;
                      return *this ;
                    }
     Price         &operator=( const double &d )
@@ -169,7 +174,7 @@ class Purchase
                    }
 } ; // class Purchase
 
-typedef ulong  HoldingID ;
+typedef uint32_t  HoldingID ;
 
 class Holding
 {
@@ -342,7 +347,7 @@ go::GOString gbl_issuenames[] =
   "TYC", (const char*)NULL
 } ;
 
-extern uint32_t    go::Callback::_nInvokes ; // lives in go_data/msgcb.cpp
+//extern uint32_t    go::Callback::_nInvokes ; // lives in go_data/msgcb.cpp
 
 void portfolio_test() 
 {
@@ -356,7 +361,7 @@ void portfolio_test()
   Issue           *i, *tmp ;
   long             j, k, nIssues = 0, nHoldings = 10, nPortfolios = 200 ;
   long             a, b, lot, count = 10000 ;
-  ulong            invokeCount = 0 ;
+  uint32_t         invokeCount = 0 ;
   double           pershare, t ;
 
   // populate issues manager
@@ -418,7 +423,7 @@ void portfolio_test()
   {
     a = o._price - 2.0 ;
     b = a + 5 ;
-    t = std::max( 10, std::min( 50, rand_between( a, b ))) ;
+    t = max( 10, min( 50, rand_between( a, b ))) ;
     o._price = t ;
     iMgr.trade( gbl_issuenames[ rand_between(0, nIssues) ], o ) ;
   }

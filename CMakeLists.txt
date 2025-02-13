@@ -30,6 +30,7 @@ target_include_directories(libgo_data INTERFACE ${go_data_SOURCE_DIR}/include)
 
 add_executable(${PROJECT_NAME} 
     src/main_observables.cpp
+    src/portfolio_test.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE libgo_data)

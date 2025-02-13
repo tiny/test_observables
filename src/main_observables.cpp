@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <gonumeric.h>
 #include <cb_lambda.h>
+#include "portfolio_test.h"
 
 // data model
 go::GOInteger x, y, z ;
@@ -33,7 +34,7 @@ void init()
     y.valueCB().install( new go::LambdaPokeCB( func_2 )) ;
 } // :: init
 
-int main(int argc, char *argv[])
+void simple_rules_test()
 {
     show_business_rules() ;
     init() ; // hook up dependencies
@@ -49,6 +50,13 @@ int main(int argc, char *argv[])
 
     printf( "\nnote the values adhere to the business rules\n" ) ;
     printf( "\n" ) ;
-    
+  
+} // :: simple_rules_test
+
+int main(int argc, char *argv[])
+{
+    simple_rules_test() ;
+    portfolio_test() ;  
+
     return 0;
 } // :: main

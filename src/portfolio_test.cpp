@@ -186,8 +186,6 @@ class Purchase
 
 typedef uint32_t  HoldingID ;
 
-HoldingID  ghid = 0 ;
-
 class Holding
 {
   public  :
@@ -202,12 +200,9 @@ class Holding
 
     virtual short  onPriceChange( const go::ArgList *args )
                    {
-ghid = _id ;
                       _current = args->asDouble(0) * (double)_price._qty ;
-//                     _current = _issue->_lastTrade._price * (double)_price._qty ;
                      _net = _current - _cost ;
-ghid = 0 ;
-return 0;
+                     return 0;
                    }
 
                    Holding( HoldingID id, Issue *i, const Purchase &price )
@@ -237,12 +232,8 @@ class Portfolio
 
     virtual short  onHoldingChange( const go::ArgList *args )
                    {
-double c = (double)_current ;
-                     _current += (args->asDouble(1) - args->asDouble(0)) ; // add difference
+                     _current += (args->asDouble(0) - args->asDouble(1)) ; // add difference
                      _net = _current - _cost ;
-if (ghid == 210) {
-  printf( "  hid.%d  new(%6.3f)  old(%6.3f)  total: %6.3f  ->  %6.3f\n", ghid, args->asDouble(0), args->asDouble(1), c, (double)_current ) ;
-}
                      return 0 ;
                    }
                    Portfolio( const PortfolioID &id )

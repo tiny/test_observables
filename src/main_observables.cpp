@@ -30,8 +30,8 @@ void func_2()
 
 void init()
 {
-    x.valueCB().install( new go::LambdaPokeCB( func_1 )) ;
-    y.valueCB().install( new go::LambdaPokeCB( func_2 )) ;
+    x >> poke( func_1 ) ;
+    y >> poke( func_2 ) ;
 } // :: init
 
 void simple_rules_test()
@@ -50,7 +50,6 @@ void simple_rules_test()
 
     printf( "\nnote the values adhere to the business rules\n" ) ;
     printf( "\n" ) ;
-  
 } // :: simple_rules_test
 
 int main(int argc, char *argv[])
